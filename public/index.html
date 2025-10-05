@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百度指数数据抓取工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #008CBA;
+        }
+        .btn-secondary:hover {
+            background-color: #007B9A;
+        }
+        .btn-danger {
+            background-color: #f44336;
+        }
+        .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status-success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .status-error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>百度指数数据抓取工具</h1>
+        
+        <div id="status" class="status hidden"></div>
+        
+        <div class="form-group">
+            <label for="keywords">请输入关键词（每行一个）：</label>
+            <textarea id="keywords" placeholder="例如：
+人工智能
+机器学习
+大数据"></textarea>
+        </div>
+        
+        <button id="initBtn">1. 初始化浏览器</button>
+        <button id="loginBtn" disabled>2. 登录百度指数</button>
+        <button id="confirmLoginBtn" disabled>3. 确认登录</button>
+        <button id="skipLoginBtn" class="btn-secondary" disabled>跳过登录检查</button>
+        <button id="searchBtn" disabled>4. 搜索关键词</button>
+        <button id="debugBtn" class="btn-secondary" disabled>调试页面元素</button>
+        <button id="exportBtn" disabled>5. 导出数据</button>
+        <button id="closeBtn" class="btn-danger">关闭浏览器</button>
+        
+        <div id="results" class="results hidden">
+            <h2>搜索结果</h2>
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>关键词</th>
+                        <th>整体日平均值</th>
+                        <th>移动日均值</th>
+                        <th>资讯指数日均值</th>
+                        <th>时间戳</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let searchResults = [];
+        
+        // DOM 元素
+        const initBtn = document.getElementById('initBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const confirmLoginBtn = document.getElementById('confirmLoginBtn');
+        const skipLoginBtn = document.getElementById('skipLoginBtn');
+        const searchBtn = document.getElementById('searchBtn');
+        const debugBtn = document.getElementById('debugBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const keywordsTextarea = document.getElementById('keywords');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const resultsBody = document.getElementById('resultsBody');
+        
+        // 显示状态消息
+        function showStatus(message, isSuccess = true) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isSuccess ? 'status-success' : 'status-error');
+            statusDiv.classList.remove('hidden');
+            
+            // 3秒后自动隐藏成功消息
+            if (isSuccess) {
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 3000);
+            }
+        }
+        
+        // 隐藏状态消息
+        function hideStatus() {
+            statusDiv.classList.add('hidden');
+        }
+        
+        // 初始化浏览器
+        initBtn.addEventListener('click', async () => {
+            try {
+                initBtn.disabled = true;
+                const response = await fetch('/init', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(result.message);
+                    loginBtn.disabled = false;
+                    skipLoginBtn.disabled = false;
+                } else {
+                    showStatus(result.message, false);
+                    initBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('初始化失败: ' + error.message, false);
+                initBtn.disabled = false;
+            }
+        });
+        
+        // 登录百度指数
+        loginBtn.addEventListener('click', async () => {
+            try {
+                loginBtn.disabled = true;
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(result.message);
+                    confirmLoginBtn.disabled = false;
+                } else {
+                    showStatus(result.message, false);
+                    loginBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('登录失败: ' + error.message, false);
+                loginBtn.disabled = false;
+            }
+        });
+        
+        // 确认登录
+        confirmLoginBtn.addEventListener('click', async () => {
+            try {
+                confirmLoginBtn.disabled = true;
+                const response = await fetch('/confirm-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(result.message);
+                    searchBtn.disabled = false;
+                    debugBtn.disabled = false;
+                    skipLoginBtn.disabled = true;
+                } else {
+                    showStatus(result.message, false);
+                    confirmLoginBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('确认登录失败: ' + error.message, false);
+                confirmLoginBtn.disabled = false;
+            }
+        });
+        
+        // 跳过登录检查
+        skipLoginBtn.addEventListener('click', async () => {
+            try {
+                isLoggedIn = true;
+                showStatus('已跳过登录检查');
+                searchBtn.disabled = false;
+                debugBtn.disabled = false;
+                skipLoginBtn.disabled = true;
+                confirmLoginBtn.disabled = true;
+            } catch (error) {
+                showStatus('跳过登录检查失败: ' + error.message, false);
+            }
+        });
+        
+        // 调试页面元素
+        debugBtn.addEventListener('click', async () => {
+            try {
+                debugBtn.disabled = true;
+                showStatus('正在分析页面元素...');
+                
+                const response = await fetch('/debug-elements', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('页面元素分析完成，打开控制台查看详细信息', true);
+                    console.log('页面元素分析结果:', result.data);
+                    
+                    // 在页面上显示结果
+                    let debugInfo = '<h3>页面元素分析结果:</h3><ul>';
+                    result.data.forEach(item => {
+                        debugInfo += `<li><strong>选择器:</strong> ${item.selector}<br>`;
+                        debugInfo += `<strong>文本:</strong> ${item.text}<br>`;
+                        debugInfo += `<strong>数字:</strong> ${item.numbers.join(', ')}<br>`;
+                        if (item.parentText) {
+                            debugInfo += `<strong>父元素文本:</strong> ${item.parentText}<br>`;
+                        }
+                        debugInfo += '</li><hr>';
+                    });
+                    debugInfo += '</ul>';
+                    
+                    // 创建一个新的div来显示调试信息
+                    const debugDiv = document.createElement('div');
+                    debugDiv.innerHTML = debugInfo;
+                    debugDiv.style.cssText = 'margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 5px; max-height: 400px; overflow-y: auto;';
+                    document.querySelector('.container').appendChild(debugDiv);
+                } else {
+                    showStatus('分析失败: ' + result.message, false);
+                }
+                
+                debugBtn.disabled = false;
+            } catch (error) {
+                showStatus('分析失败: ' + error.message, false);
+                debugBtn.disabled = false;
+            }
+        });
+        
+        // 搜索关键词
+        searchBtn.addEventListener('click', async () => {
+            try {
+                const keywordsText = keywordsTextarea.value.trim();
+                if (!keywordsText) {
+                    showStatus('请输入至少一个关键词', false);
+                    return;
+                }
+                
+                const keywords = keywordsText.split('\n').filter(k => k.trim() !== '');
+                if (keywords.length === 0) {
+                    showStatus('请输入有效的关键词', false);
+                    return;
+                }
+                
+                searchBtn.disabled = true;
+                showStatus('正在搜索关键词，请耐心等待...');
+                
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ keywords })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('搜索完成');
+                    searchResults = result.data;
+                    displayResults(result.data);
+                    exportBtn.disabled = false;
+                    // 保持搜索按钮可用，允许反复操作
+                    searchBtn.disabled = false;
+                } else {
+                    showStatus(result.message, false);
+                    searchBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('搜索失败: ' + error.message, false);
+                searchBtn.disabled = false;
+            }
+        });
+        
+        // 显示结果
+        function displayResults(data) {
+            resultsBody.innerHTML = '';
+            
+            data.forEach(item => {
+                // 解析三个值
+                let value1 = '';
+                let value2 = '';
+                let value3 = '';
+                
+                if (item.avgValue && item.avgValue !== '无法获取') {
+                    const values = item.avgValue.split(' ');
+                    value1 = values[0] || '';
+                    value2 = values[1] || '';
+                    value3 = values[2] || '';
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.keyword}</td>
+                    <td>${value1}</td>
+                    <td>${value2}</td>
+                    <td>${value3}</td>
+                    <td>${new Date(item.timestamp).toLocaleString()}</td>
+                `;
+                resultsBody.appendChild(row);
+            });
+            
+            resultsDiv.classList.remove('hidden');
+        }
+        
+        // 导出数据
+        exportBtn.addEventListener('click', async () => {
+            try {
+                exportBtn.disabled = true;
+                showStatus('正在导出数据...');
+                
+                const response = await fetch('/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: searchResults })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('数据导出成功: ' + result.filePath);
+                } else {
+                    showStatus(result.message, false);
+                    exportBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('导出失败: ' + error.message, false);
+                exportBtn.disabled = false;
+            }
+        });
+        
+        // 关闭浏览器
+        closeBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/close', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(result.message);
+                    // 重置所有按钮状态
+                    initBtn.disabled = false;
+                    loginBtn.disabled = true;
+                    confirmLoginBtn.disabled = true;
+                    searchBtn.disabled = true;
+                    exportBtn.disabled = true;
+                } else {
+                    showStatus(result.message, false);
+                }
+            } catch (error) {
+                showStatus('关闭浏览器失败: ' + error.message, false);
+            }
+        });
+    </script>
+</body>
+</html>
