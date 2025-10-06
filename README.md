@@ -1,6 +1,7 @@
 # LINGMA-BAIDU 百度指数数据抓取工具
 
 这是一个基于 Node.js、Playwright 和 Express 构建的百度指数数据抓取工具，可以自动抓取百度指数数据并导出为 CSV 文件。
+---------vibe coding的小尝试
 
 ## 功能特点
 
