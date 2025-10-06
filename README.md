@@ -25,7 +25,15 @@
 - Node.js (版本 12+)
 - npm 或 yarn
 
-### 安装步骤
+### 简单一键运行（Windows）
+
+对于 Windows 用户，可以直接运行 `run.bat` 脚本，它会自动完成依赖安装和服务器启动：
+
+1. 双击 `run.bat` 文件
+2. 或者在命令提示符中执行 `run.bat`
+3. 在浏览器中访问 `http://localhost:3000`
+
+### 手动安装步骤
 
 1. 克隆或下载本项目
 2. 安装依赖：
@@ -33,12 +41,17 @@
    npm install
    ```
 
-3. 启动服务器：
+3. 安装 Playwright Firefox 浏览器：
+   ```bash
+   npx playwright install firefox
+   ```
+
+4. 启动服务器：
    ```bash
    npm start
    ```
 
-4. 在浏览器中访问 `http://localhost:3000`
+5. 在浏览器中访问 `http://localhost:3000`
 
 ### 使用说明
 
@@ -48,6 +61,14 @@
 4. 在文本框中输入要搜索的关键词（每行一个）
 5. 点击"搜索关键词"按钮开始抓取数据
 6. 点击"导出数据"按钮将数据保存为 CSV 文件
+
+## 文档
+
+有关项目架构和扩展开发的详细信息，请参阅以下文档：
+
+- [核心模块文档](docs/core-module-documentation.md) - 项目核心功能的详细说明
+- [扩展开发指南](docs/extension-guide.md) - 如何在不修改核心功能的前提下扩展新功能
+- [API 参考文档](docs/api-reference.md) - RESTful API 接口详细说明
 
 ## API 接口说明
 
@@ -65,11 +86,16 @@
 
 ```
 lingma-baidu/
+├── docs/                   # 项目文档
+│   ├── core-module-documentation.md
+│   ├── extension-guide.md
+│   └── api-reference.md
 ├── public/
 │   └── index.html          # 前端界面
 ├── data/
 │   └── baidu_index_data.csv # 示例数据文件
 ├── server.js               # 主服务器文件
+├── run.bat                 # 一键启动脚本 (Windows)
 ├── package.json            # 项目配置文件
 └── README.md               # 项目说明文件
 ```
